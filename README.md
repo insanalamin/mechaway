@@ -46,19 +46,19 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | Type | Description |
 |------|--------------|
 | **Simple Data Nodes** | Lightweight storage and vector database nodes, including SQLite, simple key-value, and embedded vector stores. |
-| **Simple Network Filesystem Node** | Minimalist distributed filesystem connector for file sharing and caching over the network. |
-| **Data Nodes** | JSONTransform, TabularTransform, CSV/Parquet processing. |
-| **Compute Nodes** | WASMNode, FunctionNode, DockerNode for local or external computation. |
+| **Simple Network Filesystem Node** | Minimalist internal filesystem, and distributed filesystem connector for file sharing over the network. |
+| **Data Processing Nodes** | JSONTransform, TabularTransform, CSV/Parquet, GISTransform processing. |
+| **Compute Nodes** | RouteNode, WASMNode, FunctionNode, DockerNode for local or external computation. |
 | **Integration Nodes** | HTTP, WebSocket, PubSub, gRPC for inter-service communication. |
-| **Database Nodes** | Postgres, ArangoDB, TimescaleDB for structured or graph-based data. |
-| **AI / ML Nodes** | HuggingFace, Whisper, Piper, Llama for open-source AI inference. |
+| **Database Nodes** | Postgres, PostGIS, ArangoDB, TimescaleDB for structured or graph-based data. |
+| **AI / ML Nodes** | LLM, HuggingFace, Whisper, Piper, Llama for open-source AI inference. |
 | **Trigger Nodes** | Webhook, Scheduler, EventStream for reactive and time-based triggers. |
 
 ---
 
 ## 💡 Vision
 
-> To empower developers, researchers, and makers  
+> To empower developers, researchers, and makers
 > with a **minimalist**, **reliable**, and **intelligent** automation platform  
 > that honors the open-source ecosystem —  
 > **fast enough for robotics, simple enough for data flows, and open enough for ideas.**
