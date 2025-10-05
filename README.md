@@ -1,11 +1,13 @@
-# MechaWay
+# mechaway
 > **Hyperminimalist intelligent systems automation for open-source lovers.**
+
+https://way.mecha.id
 
 ---
 
-## 🧩 What is Mechaway?
+## 🧩 What is mechaway?
 
-**Mechaway** is a **workflow automation and data orchestration engine for intelligent systems**, written in **Rust**.  
+**mechaway** is a **workflow automation and data orchestration engine for intelligent systems**, written in **Rust**.  
 It lets you visually connect nodes to build real-time, event-driven, and data-centric systems — from webhooks and APIs to IoT and AI.
 
 Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, and the minimalist of **Huggingface** formats:  
