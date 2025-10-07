@@ -54,6 +54,109 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | **AI / ML Nodes** | LLM, HuggingFace, Whisper, Piper, Llama for open-source AI inference. |
 | **Trigger Nodes** | Webhook, Scheduler, EventStream for reactive and time-based triggers. |
 
+
+---
+
+## Development Strategy
+
+### Layered Architecture Overview
+
+| Layer | Description | Core Tech |
+|--------|--------------|-----------|
+| **Frontend (UI)** | Visual workflow editor, node linking, real-time status. | React + TypeScript + Tailwind + ReactFlow |
+| **Workflow Manager** | Manages workflow DAGs, serialization, and hot reload. | Rust (`serde`, `tokio`, `sqlx`, `uuid`) |
+| **Runtime Engine** | Executes DAG nodes asynchronously and deterministically. | Rust (`petgraph`, `tokio`, `tracing`) |
+| **Logic Engine** | Executes embedded logic (Lua / WASM / Rust dynamic libs). | Rust (`mlua`, `wasmtime`, `libloading`) |
+| **Data Store** | Built-in hybrid store for tabular, vector, and file data. | Rust (`polars`, `tantivy`, `sled`) |
+| **Plugin Layer** | Loads `.so`, `.dll`, or `.wasm` plugins at runtime. | Rust (`libloading`, `wasmtime`) |
+| **AI Layer** | Integrates AI models, embeddings, and containerized ML tools. | Rust (`reqwest`, `tch`, `onnxruntime`) |
+
+### Example Workflow Definition
+```json
+{
+  "id": "wf-grading",
+  "name": "grading_workflow",
+  "nodes": [
+    { "id": "n1", "type": "WebhookNode", "params": { "path": "/grade" } },
+    { "id": "n2", "type": "JSONTransformNode", "params": { "map": "{id=$.id, score=$.score}" } },
+    { "id": "n3", "type": "FunLogicNode", "params": { "engine": "mlua", "script": "for _,r in ipairs(data) do if r.score>70 then ... end end" } },
+    { "id": "n4", "type": "PostgresNode", "params": { "table": "grades" } }
+  ],
+  "edges": [
+    { "from": "n1", "to": "n2" },
+    { "from": "n2", "to": "n3" },
+    { "from": "n3", "to": "n4" }
+  ]
+}
+```
+
+### Rust Internal Representation
+
+```rs
+struct Workflow {
+    id: String,
+    name: String,
+    nodes: Vec<Node>,
+    edges: Vec<Edge>,
+}
+
+struct Node {
+    id: String,
+    node_type: NodeType,
+    params: serde_json::Value,
+}
+
+enum NodeType {
+    Webhook,
+    JSONTransform,
+    FunLogic,
+    Database,
+    Plugin,
+}
+
+struct Edge {
+    from: String,
+    to: String,
+}
+```
+
+- Workflows are stored as JSON/YAML in SQLite or any persistent store.
+- DAG relationships are built via petgraph::Graph<Node, Edge> for fast traversal.
+- Workflows can be dynamically reloaded via a registry and event listener.
+
+### Execution Pipeline
+- Frontend Save Event
+  - User saves workflow → JSON uploaded to backend API.
+- Workflow Reload
+  - WorkflowRegistry parses and validates → rebuilds DAG in memory.
+- Webhook Trigger
+  - Incoming /webhook/:workflow_id/:path event triggers execution.
+- Runtime Execution
+  - Each node executes asynchronously, topologically sorted.
+- Logic Dispatch
+  - If node type is logic-based, delegate to mlua/WASM/plugin engine.
+- Output Propagation
+  - Pass result to downstream nodes as serde_json::Value.
+
+### Logic Engines (Multi-Layer Execution)
+
+Lua Engine (mlua)
+- Used for FunLogicNode and visual logic blocks.
+- Fully embedded, sandboxed, zero external dependencies.
+- Enables conditionals, loops, variable manipulation in microseconds.
+
+Example:
+```lua
+let lua = Lua::new();
+lua.globals().set("data", serde_json_to_lua(data)?)?;
+let result: Value = lua.load(&script).eval()?;
+```
+
+Features:
+- Vendored Lua 5.4 or Luau (Roblox JIT)
+- serde integration for JSON bridging
+- Memory and instruction limits for safety
+
 ---
 
 ## 💡 Vision
