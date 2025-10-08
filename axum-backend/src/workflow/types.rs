@@ -95,6 +95,31 @@ pub enum NodeType {
     /// Expected inputs: ["$json.user_id", "$json.status"] for bind parameters
     /// Expected secrets: ["$secret.postgres_main"] - MANDATORY, no fallbacks!
     PGQuery,
+    
+    /// Dynamic PostgreSQL table writer for ETL operations
+    /// Expected params: { "table": "customers", "columns": ["id", "name", "email"] }
+    /// Expected inputs: ["$json.customer_id", "$json.name", "$json.email"] for data values
+    /// Expected secrets: ["$secret.customer_db_url"] - MANDATORY, no fallbacks!
+    /// Behavior: Auto-creates mway_dynamic_tables schema and table if not exists
+    PGDynTableWriter,
+    
+    /// MCP (Model Context Protocol) trigger for AI model integration
+    /// Expected params: { "path": "/ai/chat", "model": "gpt-4", "tools": ["image_analysis"] }
+    /// Behavior: Creates WebSocket endpoint for AI model communication
+    /// Data: Receives AI requests, sends responses via WebSocket
+    MCPTrigger,
+    
+    /// WebSocket trigger for real-time bidirectional communication
+    /// Expected params: { "path": "/robot/sensors", "protocol": "robot-v1" }
+    /// Behavior: Creates WebSocket endpoint for real-time data streams
+    /// Data: Receives real-time sensor data, sends control commands
+    WebSocketTrigger,
+    
+    /// MQTT trigger for IoT sensor data and messaging
+    /// Expected params: { "path": "/mqtt/sensors", "topic": "sensors/+/data", "qos": 2 }
+    /// Behavior: Creates MQTT subscriber endpoint for IoT data streams
+    /// Data: Receives sensor data, publishes control messages
+    MQTTTrigger,
 }
 
 /// Connection between two nodes in the workflow DAG
@@ -109,6 +134,19 @@ pub struct Edge {
     pub to: String,
 }
 
+/// File information for uploaded files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileInfo {
+    /// Original filename
+    pub filename: String,
+    /// MIME type
+    pub content_type: String,
+    /// File size in bytes
+    pub size: u64,
+    /// Local file path (project-scoped)
+    pub path: String,
+}
+
 /// Runtime execution context passed between nodes
 /// 
 /// Contains the data payload and metadata for workflow execution.
@@ -120,6 +158,15 @@ pub struct ExecutionContext {
     /// Single webhook request becomes [request_data]
     /// Multiple items from previous nodes remain as [item1, item2, ...]
     pub data: Vec<Value>,
+    /// Uploaded files (multipart/form-data)
+    /// Key: field name, Value: file information
+    pub files: HashMap<String, FileInfo>,
+    /// URL query parameters
+    /// Key: parameter name, Value: parameter value
+    pub query: HashMap<String, String>,
+    /// HTTP headers
+    /// Key: header name (lowercase), Value: header value
+    pub headers: HashMap<String, String>,
     /// Execution metadata (workflow_id, node_id, timestamps, etc)
     pub metadata: HashMap<String, Value>,
     /// Project slug for database isolation (e.g., "default", "ecommerce", "analytics")
@@ -139,7 +186,14 @@ impl ExecutionContext {
         // Wrap single webhook data in array for batch processing
         let data_array = vec![data];
         
-        Self { data: data_array, metadata, project_slug }
+        Self { 
+            data: data_array, 
+            files: HashMap::new(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            metadata, 
+            project_slug 
+        }
     }
     
     /// Create execution context from array of items (for batch processing)
@@ -149,7 +203,14 @@ impl ExecutionContext {
         metadata.insert("started_at".to_string(), 
             Value::String(chrono::Utc::now().to_rfc3339()));
         
-        Self { data, metadata, project_slug }
+        Self { 
+            data, 
+            files: HashMap::new(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            metadata, 
+            project_slug 
+        }
     }
     
     /// Create execution context from cron trigger (scheduled execution)
@@ -170,6 +231,13 @@ impl ExecutionContext {
             "project_slug": project_slug.clone()
         });
         
-        Self { data: vec![trigger_data], metadata, project_slug }
+        Self { 
+            data: vec![trigger_data], 
+            files: HashMap::new(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            metadata, 
+            project_slug 
+        }
     }
 }

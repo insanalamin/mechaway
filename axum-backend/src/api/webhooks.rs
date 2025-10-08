@@ -7,11 +7,12 @@ use crate::api::workflows::AppState;
 use crate::runtime::engine::ExecutionEngine;
 use crate::workflow::types::ExecutionContext;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::StatusCode,
     response::Json,
     routing::{any, Router},
 };
+use std::collections::HashMap;
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -38,17 +39,17 @@ pub fn create_webhook_routes() -> Router<WebhookAppState> {
 /// Execute a workflow via webhook trigger
 /// 
 /// POST/GET/PUT/DELETE /webhook/{workflow_id}/{webhook_path}
-/// Body: JSON payload that becomes the initial execution context data
+/// Supports JSON payloads (multipart support coming soon)
 async fn execute_webhook(
     State(state): State<WebhookAppState>,
     Path((workflow_id, webhook_path)): Path<(String, String)>,
+    Query(query_params): Query<HashMap<String, String>>,
     body: String,
 ) -> Result<Json<Value>, StatusCode> {
     tracing::info!("📥 Webhook request received: {}/{}", workflow_id, webhook_path);
-    tracing::debug!("📄 Request body: {}", body);
     
     // Parse JSON body manually to handle errors gracefully
-    let payload: Value = match serde_json::from_str(&body) {
+    let json_data: Value = match serde_json::from_str(&body) {
         Ok(json) => {
             tracing::debug!("✅ JSON payload parsed successfully");
             json
@@ -58,6 +59,13 @@ async fn execute_webhook(
             return Err(StatusCode::BAD_REQUEST);
         }
     };
+    
+    // Initialize execution context components (multipart support coming soon)
+    let files = HashMap::new(); // TODO: Implement multipart support
+    let headers = HashMap::new(); // TODO: Extract from request headers
+    
+    tracing::debug!("📊 Parsed data - JSON: {:?}, Files: {}, Query: {:?}", 
+        json_data, files.len(), query_params);
     
     // Get the compiled workflow from registry
     tracing::debug!("🔍 Looking up workflow in registry: {}", workflow_id);
@@ -83,11 +91,17 @@ async fn execute_webhook(
     let start_node_id = find_webhook_start_node(&compiled_workflow, &webhook_path_normalized)?;
     tracing::debug!("✅ Found start node: {}", start_node_id);
 
-    // Create execution context from webhook payload
-    tracing::debug!("📋 Creating execution context with payload");
-    let execution_context = ExecutionContext::from_webhook_data(workflow_id.clone(), payload, "default".to_string());
-    tracing::debug!("📊 Execution context created with {} metadata fields", 
-        execution_context.metadata.len());
+    // Create execution context with unified data (JSON + files + query + headers)
+    tracing::debug!("📋 Creating execution context with unified data");
+    let mut execution_context = ExecutionContext::from_webhook_data(workflow_id.clone(), json_data, "default".to_string());
+    
+    // Add files, query params, and headers to execution context
+    execution_context.files = files;
+    execution_context.query = query_params;
+    execution_context.headers = headers; // TODO: Extract from request headers
+    
+    tracing::debug!("📊 Execution context created with {} metadata fields, {} files, {} query params", 
+        execution_context.metadata.len(), execution_context.files.len(), execution_context.query.len());
 
     // Execute the workflow starting from the webhook node
     tracing::info!("🚀 Starting workflow execution for: {} from node: {}", workflow_id, start_node_id);

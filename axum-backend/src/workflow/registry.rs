@@ -187,7 +187,7 @@ impl WorkflowRegistry {
         
         // Validate that workflow has at least one start node (Webhook or CronTrigger)
         if start_node_ids.is_empty() {
-            return Err(anyhow::anyhow!("Workflow must have at least one start node (WebhookNode or CronTrigger)"));
+            return Err(anyhow::anyhow!("Workflow must have at least one start node (Webhook or CronTrigger)"));
         }
         
         Ok(CompiledWorkflow {

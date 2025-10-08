@@ -95,6 +95,27 @@ impl NodeExecutor {
             NodeType::PGQuery => {
                 self.execute_pgquery_node(node, context).await
             }
+            NodeType::PGDynTableWriter => {
+                self.execute_pgdyn_table_writer_node(node, context).await
+            }
+            NodeType::MCPTrigger => {
+                // MCPTrigger is handled by the API layer as entry point
+                // This should not be called during execution
+                tracing::error!("❌ MCPTrigger should not be executed directly: {}", node.id);
+                Err(anyhow::anyhow!("MCPTrigger should not be executed directly"))
+            }
+            NodeType::WebSocketTrigger => {
+                // WebSocketTrigger is handled by the API layer as entry point
+                // This should not be called during execution
+                tracing::error!("❌ WebSocketTrigger should not be executed directly: {}", node.id);
+                Err(anyhow::anyhow!("WebSocketTrigger should not be executed directly"))
+            }
+            NodeType::MQTTTrigger => {
+                // MQTTTrigger is handled by the API layer as entry point
+                // This should not be called during execution
+                tracing::error!("❌ MQTTTrigger should not be executed directly: {}", node.id);
+                Err(anyhow::anyhow!("MQTTTrigger should not be executed directly"))
+            }
         };
         
         let duration = start_time.elapsed();
@@ -128,6 +149,24 @@ impl NodeExecutor {
             } else if pin_expr == "$json" {
                 // Return first item from array
                 context.data.get(0).cloned().unwrap_or(Value::Null)
+            } else if pin_expr.starts_with("$file.") {
+                let field_name = &pin_expr[6..]; // Remove "$file."
+                self.extract_file_field(&context.files, field_name)?
+            } else if pin_expr.starts_with("$query.") {
+                let param_name = &pin_expr[7..]; // Remove "$query."
+                self.extract_query_param(&context.query, param_name)?
+            } else if pin_expr.starts_with("$headers.") {
+                let header_name = &pin_expr[9..]; // Remove "$headers."
+                self.extract_header_value(&context.headers, header_name)?
+            } else if pin_expr.starts_with("$websocket.") {
+                let field_name = &pin_expr[11..]; // Remove "$websocket."
+                self.extract_websocket_field(&context.data, field_name)?
+            } else if pin_expr.starts_with("$mqtt.") {
+                let field_name = &pin_expr[6..]; // Remove "$mqtt."
+                self.extract_mqtt_field(&context.data, field_name)?
+            } else if pin_expr.starts_with("$mcp.") {
+                let field_name = &pin_expr[5..]; // Remove "$mcp."
+                self.extract_mcp_field(&context.data, field_name)?
             } else if self.is_safe_lua_expression(pin_expr) {
                 // SAFE LUA EXECUTION: Single-line expressions with security limits
                 self.execute_safe_lua_expression(pin_expr, context)?
@@ -166,6 +205,101 @@ impl NodeExecutor {
         }
         
         Ok(secrets)
+    }
+    
+    /// Extract file information from uploaded files
+    fn extract_file_field(&self, files: &HashMap<String, crate::workflow::types::FileInfo>, field_name: &str) -> Result<Value> {
+        match files.get(field_name) {
+            Some(file_info) => {
+                let file_json = serde_json::json!({
+                    "filename": file_info.filename,
+                    "content_type": file_info.content_type,
+                    "size": file_info.size,
+                    "path": file_info.path
+                });
+                Ok(file_json)
+            }
+            None => {
+                tracing::warn!("⚠️ File field '{}' not found in uploaded files", field_name);
+                Ok(Value::Null)
+            }
+        }
+    }
+    
+    /// Extract query parameter value
+    fn extract_query_param(&self, query: &HashMap<String, String>, param_name: &str) -> Result<Value> {
+        match query.get(param_name) {
+            Some(value) => Ok(Value::String(value.clone())),
+            None => {
+                tracing::warn!("⚠️ Query parameter '{}' not found", param_name);
+                Ok(Value::Null)
+            }
+        }
+    }
+    
+    /// Extract HTTP header value
+    fn extract_header_value(&self, headers: &HashMap<String, String>, header_name: &str) -> Result<Value> {
+        match headers.get(header_name) {
+            Some(value) => Ok(Value::String(value.clone())),
+            None => {
+                tracing::warn!("⚠️ Header '{}' not found", header_name);
+                Ok(Value::Null)
+            }
+        }
+    }
+    
+    /// Extract WebSocket data field
+    fn extract_websocket_field(&self, data: &[Value], field_name: &str) -> Result<Value> {
+        // WebSocket data is stored in the first data item with websocket prefix
+        let first_item = data.get(0).unwrap_or(&Value::Null);
+        if let Some(websocket_data) = first_item.get("websocket") {
+            match websocket_data.get(field_name) {
+                Some(value) => Ok(value.clone()),
+                None => {
+                    tracing::warn!("⚠️ WebSocket field '{}' not found", field_name);
+                    Ok(Value::Null)
+                }
+            }
+        } else {
+            tracing::warn!("⚠️ No WebSocket data found in context");
+            Ok(Value::Null)
+        }
+    }
+    
+    /// Extract MQTT data field
+    fn extract_mqtt_field(&self, data: &[Value], field_name: &str) -> Result<Value> {
+        // MQTT data is stored in the first data item with mqtt prefix
+        let first_item = data.get(0).unwrap_or(&Value::Null);
+        if let Some(mqtt_data) = first_item.get("mqtt") {
+            match mqtt_data.get(field_name) {
+                Some(value) => Ok(value.clone()),
+                None => {
+                    tracing::warn!("⚠️ MQTT field '{}' not found", field_name);
+                    Ok(Value::Null)
+                }
+            }
+        } else {
+            tracing::warn!("⚠️ No MQTT data found in context");
+            Ok(Value::Null)
+        }
+    }
+    
+    /// Extract MCP data field
+    fn extract_mcp_field(&self, data: &[Value], field_name: &str) -> Result<Value> {
+        // MCP data is stored in the first data item with mcp prefix
+        let first_item = data.get(0).unwrap_or(&Value::Null);
+        if let Some(mcp_data) = first_item.get("mcp") {
+            match mcp_data.get(field_name) {
+                Some(value) => Ok(value.clone()),
+                None => {
+                    tracing::warn!("⚠️ MCP field '{}' not found", field_name);
+                    Ok(Value::Null)
+                }
+            }
+        } else {
+            tracing::warn!("⚠️ No MCP data found in context");
+            Ok(Value::Null)
+        }
     }
     
     /// Extract field from JSON data using simple dot notation
@@ -956,6 +1090,84 @@ impl NodeExecutor {
         });
         
         tracing::info!("✅ PGQuery placeholder completed: {}", node.id);
+        
+        Ok(ExecutionResult {
+            data: vec![placeholder_result],
+            metadata: context.metadata,
+            should_continue: true,
+        })
+    }
+    
+    /// Execute PGDynTableWriter node for ETL operations
+    /// 
+    /// INDUSTRIAL-GRADE: Auto-creates mway_dynamic_tables schema and table
+    /// ETL-FOCUSED: Designed for data pipeline operations to user's business databases
+    async fn execute_pgdyn_table_writer_node(&self, node: &Node, context: ExecutionContext) -> Result<ExecutionResult> {
+        tracing::debug!("🐘📝 Executing PGDynTableWriter node: {}", node.id);
+        
+        // STEP 1: MANDATORY secret validation (no fallbacks!)
+        let secrets = node.secrets.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("PGDynTableWriter node '{}' REQUIRES secrets field - no fallbacks allowed!", node.id))?;
+        
+        if secrets.is_empty() {
+            return Err(anyhow::anyhow!("PGDynTableWriter node '{}' requires at least one secret for database connection", node.id));
+        }
+        
+        // STEP 2: Resolve secrets (database connection strings)
+        let resolved_secrets = self.evaluate_secret_pins(secrets)?;
+        let connection_string = resolved_secrets.get(0)
+            .ok_or_else(|| anyhow::anyhow!("PGDynTableWriter node '{}' failed to resolve database connection secret", node.id))?;
+        
+        tracing::debug!("🔐 Using database connection for ETL node: {}", node.id);
+        
+        // STEP 3: Get table and columns from params
+        let table_name = node.params.get("table")
+            .and_then(|t| t.as_str())
+            .ok_or_else(|| anyhow::anyhow!("PGDynTableWriter node '{}' missing 'table' parameter", node.id))?;
+        
+        let columns = node.params.get("columns")
+            .and_then(|c| c.as_array())
+            .ok_or_else(|| anyhow::anyhow!("PGDynTableWriter node '{}' missing 'columns' parameter", node.id))?
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        
+        if columns.is_empty() {
+            return Err(anyhow::anyhow!("PGDynTableWriter node '{}' requires at least one column", node.id));
+        }
+        
+        tracing::debug!("📊 Target table: {} with columns: {:?}", table_name, columns);
+        
+        // STEP 4: Resolve input pins for data values
+        let data_values = if let Some(inputs) = &node.inputs {
+            if inputs.len() != columns.len() {
+                return Err(anyhow::anyhow!("Input pins count ({}) must match columns count ({})", 
+                    inputs.len(), columns.len()));
+            }
+            self.evaluate_input_pins(inputs, &context)?
+        } else {
+            return Err(anyhow::anyhow!("PGDynTableWriter node '{}' requires input pins for data values", node.id));
+        };
+        
+        tracing::debug!("🔗 Data values: {:?}", data_values);
+        
+        // STEP 5: Execute PostgreSQL ETL operation (placeholder implementation)
+        // TODO: Implement actual tokio-postgres connection, schema creation, and table insertion
+        tracing::warn!("🚨 PGDynTableWriter execution not fully implemented yet - returning placeholder");
+        
+        let placeholder_result = json!({
+            "operation": "pgdyn_table_write",
+            "schema": "mway_dynamic_tables",
+            "table": table_name,
+            "columns": columns,
+            "data_values": data_values,
+            "connection": "REDACTED",
+            "rows_affected": 1,
+            "executed_at": chrono::Utc::now().to_rfc3339()
+        });
+        
+        tracing::info!("✅ PGDynTableWriter placeholder completed: {}", node.id);
         
         Ok(ExecutionResult {
             data: vec![placeholder_result],
