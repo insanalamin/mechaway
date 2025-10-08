@@ -1,0 +1,57 @@
+{
+  "workflow": {
+    "id": "api-polling-workflow",
+    "name": "Melbourne Weather Polling Workflow",
+    "nodes": [
+    {
+      "id": "minute-trigger",
+      "node_type": "CronTrigger",
+      "params": {
+        "schedule": "0 */3 * * * *",
+        "timezone": "UTC"
+      }
+    },
+    {
+      "id": "fetch-weather-data",
+      "node_type": "HTTPClient", 
+      "params": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=-37.8136&longitude=144.9631&current=temperature_2m,wind_speed_10m,precipitation,weathercode&timezone=auto",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mechaway-Weather/1.0"
+        }
+      }
+    },
+    {
+      "id": "store-weather-data",
+      "node_type": "SimpleTableWriter",
+      "params": {
+        "table": "weather_data",
+        "columns": ["timestamp", "temperature", "wind_speed", "precipitation", "weather_code", "latitude", "longitude", "timezone", "http_status", "executed_at"]
+      },
+      "inputs": [
+        "$json.data.current.time",
+        "$json.data.current.temperature_2m",
+        "$json.data.current.wind_speed_10m", 
+        "$json.data.current.precipitation",
+        "$json.data.current.weathercode",
+        "$json.data.latitude",
+        "$json.data.longitude",
+        "$json.data.timezone",
+        "$json.status",
+        "date('%Y-%m-%d %H:%M:%S')"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "minute-trigger",
+      "to": "fetch-weather-data"
+    },
+    {
+      "from": "fetch-weather-data", 
+      "to": "store-weather-data"
+    }
+  ]
+  }
+}

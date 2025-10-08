@@ -1,0 +1,8 @@
+# Ignore all database files - these are runtime data, not source code
+*.db
+*.db-shm
+*.db-wal
+
+# Keep the directory structure but ignore all database content
+*
+!.gitignore

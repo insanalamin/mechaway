@@ -1,3 +1,5 @@
+![Mechaway Logo](uxui/logo-320.png)
+
 # mechaway
 > **Hyperminimalist intelligent systems automation for open-source lovers.**
 

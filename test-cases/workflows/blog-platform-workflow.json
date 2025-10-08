@@ -1,0 +1,140 @@
+{
+  "workflow": {
+    "id": "blog-platform-workflow",
+    "name": "Complete Blogging Platform",
+    "nodes": [
+      {
+        "id": "create-post-webhook",
+        "node_type": "Webhook",
+        "params": {
+          "path": "/create"
+        }
+      },
+      {
+        "id": "list-posts-webhook", 
+        "node_type": "Webhook",
+        "params": {
+          "path": "/list"
+        }
+      },
+      {
+        "id": "search-posts-webhook",
+        "node_type": "Webhook", 
+        "params": {
+          "path": "/search"
+        }
+      },
+      {
+        "id": "stats-webhook",
+        "node_type": "Webhook",
+        "params": {
+          "path": "/stats"
+        }
+      },
+      {
+        "id": "get-post-webhook",
+        "node_type": "Webhook", 
+        "params": {
+          "path": "/post"
+        }
+      },
+      {
+        "id": "post-processor",
+        "node_type": "FunLogic",
+        "params": {
+          "script": "local item = data[1] or {}; local result = {}; result.title = item.title or 'Untitled Post'; result.content = item.content or ''; result.author = item.author or 'Anonymous'; result.status = item.status or 'draft'; local slug = string.lower(result.title); slug = string.gsub(slug, '[^%w%s%-]', ''); slug = string.gsub(slug, '%s+', '-'); slug = string.gsub(slug, '%-+', '-'); slug = string.gsub(slug, '^%-+', ''); slug = string.gsub(slug, '%-+$', ''); result.slug = slug; local word_count = 0; for word in string.gmatch(result.content, '%S+') do word_count = word_count + 1; end; result.word_count = word_count; result.reading_time = math.ceil(result.word_count / 200); result.created_at = os.date('%Y-%m-%d %H:%M:%S'); return result"
+        }
+      },
+      {
+        "id": "search-processor",
+        "node_type": "FunLogic", 
+        "params": {
+          "script": "local item = data[1] or {}; local result = {}; local search_term = item.query or item.search or ''; result.search_term = search_term; result.limit = tonumber(item.limit) or 10; result.status_filter = item.status or 'published'; return result"
+        }
+      },
+      {
+        "id": "post-saver",
+        "node_type": "SimpleTableWriter",
+        "params": {
+          "table": "blog_posts",
+          "columns": ["title", "content", "author", "slug", "status", "word_count", "reading_time", "created_at"]
+        }
+      },
+      {
+        "id": "posts-reader",
+        "node_type": "SimpleTableReader", 
+        "params": {
+          "table": "blog_posts",
+          "limit": 20
+        }
+      },
+      {
+        "id": "posts-searcher",
+        "node_type": "SimpleTableReader",
+        "params": {
+          "table": "blog_posts", 
+          "where": "title LIKE '%search_term%' OR content LIKE '%search_term%'",
+          "limit": 10
+        }
+      },
+      {
+        "id": "stats-reader",
+        "node_type": "SimpleTableReader",
+        "params": {
+          "table": "blog_posts",
+          "limit": 1000
+        }
+      },
+      {
+        "id": "stats-processor",
+        "node_type": "FunLogic",
+        "params": {
+          "script": "local item = data[1] or {}; local stats = {}; local posts = item.results or {}; stats.total_posts = #posts; stats.published_count = 0; stats.draft_count = 0; stats.total_words = 0; stats.avg_reading_time = 0; for i, post in ipairs(posts) do if post.status == 'published' then stats.published_count = stats.published_count + 1; elseif post.status == 'draft' then stats.draft_count = stats.draft_count + 1; end; stats.total_words = stats.total_words + (post.word_count or 0); end; if stats.total_posts > 0 then stats.avg_reading_time = math.ceil(stats.total_words / stats.total_posts / 200); end; stats.authors = {}; for i, post in ipairs(posts) do if post.author and not stats.authors[post.author] then stats.authors[post.author] = 0; end; if post.author then stats.authors[post.author] = stats.authors[post.author] + 1; end; end; return stats"
+        }
+      },
+      {
+        "id": "post-by-slug-query",
+        "node_type": "SimpleTableQuery",
+        "params": {
+          "table": "blog_posts",
+          "query": "SELECT * FROM blog_posts WHERE slug = ? LIMIT 1"
+        },
+        "inputs": ["$json.slug"]
+      }
+    ],
+    "edges": [
+      {
+        "from": "create-post-webhook",
+        "to": "post-processor"
+      },
+      {
+        "from": "post-processor", 
+        "to": "post-saver"
+      },
+      {
+        "from": "list-posts-webhook",
+        "to": "posts-reader"
+      },
+      {
+        "from": "search-posts-webhook",
+        "to": "search-processor"
+      },
+      {
+        "from": "search-processor",
+        "to": "posts-searcher"
+      },
+      {
+        "from": "stats-webhook",
+        "to": "stats-reader"
+      },
+      {
+        "from": "stats-reader",
+        "to": "stats-processor"
+      },
+      {
+        "from": "get-post-webhook",
+        "to": "post-by-slug-query"
+      }
+    ]
+  }
+}
