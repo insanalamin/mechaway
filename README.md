@@ -1,4 +1,4 @@
-![Mechaway Logo](uxui/logo-320.png)
+![Mechaway Logo](uxui/logo-120.png)
 
 # mechaway
 > **Hyperminimalist intelligent systems automation for open-source lovers.**
@@ -21,7 +21,7 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 - Lightweight backend management and explorer
 - Agentic design with multimodal tools support 
 - Bidirectional websocket interactions for AI companions, chatrooms, and multiplayer apps
-- Durable orchestrator for long-running, resumable computation such as research simulation, ETL, ML training, research, and analysis
+- Durable orchestrator for long-running, resumable computation such as research simulation, ETL, ML training, and analysis
 
 ---
 
