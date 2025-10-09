@@ -39,7 +39,7 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | 💾 **Built-in Data Store** | Integrated lightweight data layer with simple tabular + vector DB and a minimalist network file system. |
 | 🧠 **AI-Ready** | Integrate Hugging Face models, Piper TTS, and other open AI tools directly as node containers. |
 | 🖥️ **Workflow Explorer Component** | A desktop-style hierarchical layout for browsing projects, folders, and workflows, that you can integrate directly on your React-based web app |
-| 💬 **Polyglot Client SDKs** | Tiny mechaway-client libraries (Python, ) for task coordination to any M-Y instance. |
+| 💬 **Polyglot Client SDKs** | Tiny mechaway-client libraries (Python, Rust, C, C++, R, C#, Go, JavaScript, Java) for task coordination to any M-Y instance. |
 
 ---
 
