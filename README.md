@@ -3,6 +3,10 @@
 # mechaway
 > **Hyperminimalist intelligent systems automation for open-source lovers.**
 
+> abbr: M-Y
+
+> Empowering engineers, scientists, analysts, and publishers
+
 https://way.mecha.id
 
 ---
@@ -12,11 +16,12 @@ https://way.mecha.id
 **mechaway** is a **workflow automation and data orchestration engine for intelligent systems**, written in **Rust**.  
 It lets you visually connect nodes to build real-time, event-driven, and data-centric systems — from webhooks and APIs to IoT and AI.
 
-Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, and the minimalist of **Huggingface** formats:  
-- predictable,  
-- hot-reloadable,  
-- zero-GC latency,  
-- and open to anyone who believes simplicity can be powerful.
+Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, and the efficient formats of **Huggingface** models. Support different cases of intelligent systems automation: 
+- Realtime reactive microflows (fast telemetry) for sensors and actuators
+- Lightweight backend management and explorer
+- Agentic design with multimodal tools support 
+- Bidirectional websocket interactions for AI companions, chatrooms, and multiplayer apps
+- Durable orchestrator for long-running, resumable computation such as research simulation, ETL, ML training, research, and analysis
 
 ---
 
@@ -25,6 +30,7 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | Principle | Description |
 |------------|-------------|
 | 🦀 **Hyperminimalist Core** | Built in Rust — no Node.js, no dependency bloat, no nonsense. |
+| ⚙️ **Single Standalone Installer** | Ships as one binary (mechaway). Scales later by simply enabling external drivers (NATS, Postgres, K8s) |
 | ⚙️ **Composable DAG Engine** | Each workflow is a Directed Acyclic Graph (DAG) executed in-memory using Petgraph for deterministic flow. |
 | 🔥 **Hot-Reload Architecture** | Edit and save workflows — instantly live, no server restart. |
 | 🌍 **Universal Connectivity** | First-class nodes for HTTP, WebSocket, gRPC, Pub/Sub, ArangoDB, TimescaleDB, and AI pipelines. |
@@ -32,6 +38,8 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | 🧩 **Extensible by Design** | Add new nodes as `.so` or `.wasm` plugins — no pod restart, no rebuilds. |
 | 💾 **Built-in Data Store** | Integrated lightweight data layer with simple tabular + vector DB and a minimalist network file system. |
 | 🧠 **AI-Ready** | Integrate Hugging Face models, Piper TTS, and other open AI tools directly as node containers. |
+| 🖥️ **Workflow Explorer Component** | A desktop-style hierarchical layout for browsing projects, folders, and workflows, that you can integrate directly on your React-based web app |
+| 💬 **Polyglot Client SDKs** | Tiny mechaway-client libraries (Python, ) for task coordination to any M-Y instance. |
 
 ---
 
@@ -50,7 +58,7 @@ Inspired by the core functionality of **Node-RED**, the friendly UX of **N8n**, 
 | **Simple Data Nodes** | Lightweight storage and vector database nodes, including SQLite, simple key-value, and embedded vector stores. |
 | **Simple Network Filesystem Node** | Minimalist internal filesystem, and distributed filesystem connector for file sharing over the network. |
 | **Data Processing Nodes** | JSONTransform, TabularTransform, CSV/Parquet, GISTransform processing. |
-| **Compute Nodes** | RouteNode, WASMNode, FunctionNode, DockerNode for local or external computation. |
+| **Compute Nodes** | RouteNode, WASMNode, FunctionNode, DockerNode, TaskExecutorNode for local or external computation. |
 | **Integration Nodes** | HTTP, WebSocket, PubSub, gRPC for inter-service communication. |
 | **Database Nodes** | Postgres, PostGIS, ArangoDB, TimescaleDB for structured or graph-based data. |
 | **AI / ML Nodes** | LLM, HuggingFace, Whisper, Piper, Llama for open-source AI inference. |
